@@ -1,0 +1,69 @@
+services:
+  config-server:
+    image: petclinic/config-server:local
+    container_name: config-server
+    healthcheck:
+      test: ["CMD", "curl", "-I", "http://config-server:8888"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "8888:8888"
+
+  discovery-server:
+    image: petclinic/discovery-server:local
+    container_name: discovery-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://discovery-server:8761"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8761:8761"
+
+  customers-service:
+    image: petclinic/customers-service:local
+    container_name: customers-service
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  visits-service:
+    image: petclinic/visits-service:local
+    container_name: visits-service
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+
+  vets-service:
+    image: petclinic/vets-service:local
+    container_name: vets-service
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+
+  api-gateway:
+    image: petclinic/api-gateway:local
+    container_name: api-gateway
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
