@@ -1,0 +1,11 @@
+apiVersion: gateway.nginx.org/v1alpha2
+kind: NginxProxy
+metadata:
+  name: petclinic-nginx-proxy
+spec:
+  kubernetes:
+    service:
+      type: NodePort
+      nodePorts:
+        - listenerPort: 80
+          port: 30080
