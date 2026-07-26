@@ -96,6 +96,52 @@ Images are publicly available:
 docker pull ghcr.io/<username>/petclinic-<service-name>:latest
 ```
 
+## Kubernetes deployment (Helm)
+
+The same 6 services can be deployed to a Kubernetes cluster via the Helm chart in `helm/petclinic/`.
+
+### Prerequisites
+
+- A running Kubernetes cluster with `kubectl` access
+- [Helm 3](https://helm.sh/)
+- [NGINX Gateway Fabric](https://docs.nginx.com/nginx-gateway-fabric/) (Gateway API implementation) installed in the cluster
+
+### 1. Install Gateway API CRDs and NGINX Gateway Fabric
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+
+helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
+  --namespace nginx-gateway \
+  --create-namespace \
+  --wait
+```
+
+### 2. Deploy the application
+
+```bash
+helm upgrade --install petclinic ./helm/petclinic
+```
+
+This creates:
+- A `Deployment` + `Service` for each of the 6 microservices
+- Startup/readiness/liveness probes tuned for Spring Boot's Config Server / Eureka bootstrap time
+- An `initContainer` per service that waits for its dependencies (config-server, discovery-server) to be reachable before starting
+- A `Gateway` + `HTTPRoute` exposing `api-gateway` through NGINX Gateway Fabric
+- An `NginxProxy` resource configuring the auto-provisioned data-plane Service as `NodePort` (bare-metal cluster, no cloud load balancer)
+
+### 3. Access
+
+Find the NodePort assigned to the Gateway's data-plane service:
+
+```bash
+kubectl get svc -A | grep gateway-nginx
+```
+
+Add a hosts entry pointing `petclinic.local` at any cluster node's IP, then open:
+
+http://petclinic.local:<nodeport>
+
 ## Key engineering decisions
 
 - **Multi-stage Docker build** — separate stages for compilation (JDK) and runtime (JRE), smaller final image, non-root user.
